@@ -47,7 +47,7 @@ st.sidebar.markdown("""
             <li>Feature Scaling</li>
         </ul>
         The final prediction is made using an:
-        <b>AdaBoost Classification Model</b>
+        <b>Gradient Boosting Classification Model</b>
     </p>
 
     <h3 style='color:#4b79a1; font-weight:700;'>🔐 Data Privacy</h3>
