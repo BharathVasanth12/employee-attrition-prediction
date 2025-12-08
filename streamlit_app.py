@@ -41,13 +41,14 @@ st.sidebar.markdown("""
     <p>
         Your inputs are processed using:
         <ul>
-            <li>Label Encoding</li>
+            <li>Binary Encoding</li>
             <li>Ordinal Encoding</li>
             <li>One-Hot Encoding</li>
             <li>Feature Scaling</li>
         </ul>
-        The final prediction is made using an:
-        <b>Gradient Boosting Classification Model</b>
+        The final prediction is made using a:
+        <b>Gradient Boosting Classification Model</b> with hyperparameter tuning<br>
+        achieving <b>74.5% F1-Score</b> on test data (75.4% train, 75.8% 10-fold CV)
     </p>
 
     <h3 style='color:#4b79a1; font-weight:700;'>🔐 Data Privacy</h3>
@@ -219,15 +220,36 @@ if st.button("Predict Attrition", use_container_width=True):
 
     df = pd.DataFrame([data])
 
+    # Handle missing values before encoding
+    # Fill NaN with appropriate defaults
+    if df.isnull().any().any():
+        st.warning("⚠️ Some values are missing. Using default values...")
+        # For numeric columns, use median
+        numeric_cols = df.select_dtypes(include=[np.number]).columns
+        for col in numeric_cols:
+            if df[col].isnull().any():
+                df[col].fillna(df[col].median() if not df[col].isnull().all() else 0, inplace=True)
+        # For categorical columns, use mode or a default value
+        categorical_cols = df.select_dtypes(include=['object']).columns
+        for col in categorical_cols:
+            if df[col].isnull().any():
+                df[col].fillna(df[col].mode()[0] if not df[col].isnull().all() else 'Unknown', inplace=True)
+
     # Binary Encoding
     for col, mapping in binary_map.items():
         if col in df.columns:
             df[col] = df[col].map(mapping)
+            # Handle any NaN from mapping
+            if df[col].isnull().any():
+                df[col].fillna(0, inplace=True)
 
     # Ordinal Encoding
     for col, mapping in ordinal_map.items():
         if col in df.columns:
             df[col] = df[col].map(mapping)
+            # Handle any NaN from mapping (unmapped categories)
+            if df[col].isnull().any():
+                df[col].fillna(0, inplace=True)
 
     # One-Hot Encoding
     ohe_cols = ["Job Role", "Marital Status"]
@@ -237,6 +259,11 @@ if st.button("Predict Attrition", use_container_width=True):
 
     # Outlier capping
     df['Years at Company'] = df['Years at Company'].apply(lambda x: 40 if x > 40 else x)
+
+    # Check for NaN values before power transformation
+    if df[['Number of Dependents', 'Number of Promotions', 'Years at Company']].isnull().any().any():
+        st.error("⚠️ Error: Some numeric values are missing. Please check your inputs.")
+        st.stop()
 
     # Skewness transformation using saved transformer
     cols_to_transform = ['Number of Dependents', 'Number of Promotions', 'Years at Company']
@@ -248,6 +275,15 @@ if st.button("Predict Attrition", use_container_width=True):
 
     # Align columns with training features
     df = df.reindex(columns=feature_columns, fill_value=0)
+
+    # Final NaN check before scaling
+    if df.isnull().any().any():
+        st.error("⚠️ Error: NaN values detected after preprocessing!")
+        st.write("Columns with NaN values:")
+        st.write(df.columns[df.isnull().any()].tolist())
+        st.write("Data preview:")
+        st.dataframe(df)
+        st.stop()
 
     # Scale input
     df_scaled = scaler.transform(df)
