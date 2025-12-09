@@ -285,8 +285,8 @@ if st.button("Predict Attrition", use_container_width=True):
         st.dataframe(df)
         st.stop()
 
-    # Scale input
-    df_scaled = scaler.transform(df)
+    # Scale input - preserve feature names by converting back to DataFrame
+    df_scaled = pd.DataFrame(scaler.transform(df), columns=df.columns, index=df.index)
 
     # Predict
     pred = model.predict(df_scaled)[0]
